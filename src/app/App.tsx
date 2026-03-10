@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { type SectionId } from "./components/nav-sidebar";
 import { PageHome } from "./components/page-home";
 import { PageAbout } from "./components/page-about";
@@ -38,28 +38,39 @@ export default function App() {
     scrollToSection(id);
   }, [scrollToSection]);
 
+  // Scroll progress bar — separate from section tracking
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       setScrollProgress(docHeight > 0 ? scrollTop / docHeight : 0);
-
-      let current = "landing";
-      for (const section of sections) {
-        const el = document.getElementById(`section-${section.id}`);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= window.innerHeight * 0.4) {
-            current = section.id;
-          }
-        }
-      }
-      setActiveSection(current);
     };
-
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Active section tracking via IntersectionObserver.
+  // rootMargin "-45% 0px -45% 0px" creates a 10% detection band at the
+  // center of the viewport — a section becomes active only when its content
+  // occupies the middle of the screen, matching the feel of most portfolio sites.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id.replace("section-", ""));
+          }
+        }
+      },
+      { rootMargin: "-45% 0px -45% 0px", threshold: 0 }
+    );
+
+    for (const section of sections) {
+      const el = document.getElementById(`section-${section.id}`);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
   }, []);
 
   const downloadCV = useCallback(() => {
@@ -106,7 +117,7 @@ export default function App() {
               title={lang === "pl" ? section.label : section.labelEn}
             >
               <span
-                className={`whitespace-nowrap text-[11px] tracking-[0.08em] uppercase transition-all duration-300 ${
+                className={`whitespace-nowrap text-[11px] tracking-[0.08em] uppercase transition-all duration-500 ease-in-out ${
                   isActive
                     ? "opacity-100 translate-x-0"
                     : "opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
@@ -116,7 +127,7 @@ export default function App() {
                 {lang === "pl" ? section.label : section.labelEn}
               </span>
               <span
-                className="block transition-all duration-300 shrink-0"
+                className="block transition-all duration-500 ease-in-out shrink-0"
                 style={{
                   width: isActive ? "24px" : "12px",
                   height: "2px",
