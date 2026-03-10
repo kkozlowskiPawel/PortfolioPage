@@ -29,9 +29,26 @@ export default function App() {
 
   const scrollToSection = useCallback((id: SectionId | "landing") => {
     const el = document.getElementById(`section-${id}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (!el) return;
+
+    const start = window.scrollY;
+    const target = el.getBoundingClientRect().top + start;
+    const distance = target - start;
+    const duration = Math.min(1200, Math.max(600, Math.abs(distance) * 0.5));
+    let startTime: number | null = null;
+
+    const easeInOutCubic = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      window.scrollTo(0, start + distance * easeInOutCubic(progress));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+
+    requestAnimationFrame(step);
   }, []);
 
   const openSection = useCallback((id: SectionId) => {
